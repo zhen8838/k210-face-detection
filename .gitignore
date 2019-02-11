@@ -1,0 +1,10 @@
+.pytest_cache
+.vscode
+*.pyc
+log
+data
+mobilenet_v1_0.5_224
+test
+tmp
+*.pb
+*.tflite
