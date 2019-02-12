@@ -4,46 +4,8 @@ import os
 import skimage
 import cv2
 from math import cos, sin
-
-
-def make_train_list():
-    train_txt_path = '/media/zqh/Datas/DataSet/FDDB/FDDB-folds/train.txt'
-    image_root = '/media/zqh/Datas/DataSet/FDDB/'
-    with open(train_txt_path, 'r') as f:
-        datalist = f.readlines()
-    datalist = [i.strip() for i in datalist]
-    for i, line in enumerate(datalist):
-        if 'img' in line:
-            datalist[i] = '\n'+image_root+line+'.jpg'
-            datalist[i+1] = ''
-        else:
-            datalist[i] = ' '+line
-    with open('data/train.list', 'w') as f:
-        f.write(''.join(datalist))
-
-def make_test_list():
-    train_txt_path = '/media/zqh/Datas/DataSet/FDDB/FDDB-folds/test.txt'
-    image_root = '/media/zqh/Datas/DataSet/FDDB/'
-    with open(train_txt_path, 'r') as f:
-        datalist = f.readlines()
-    datalist = [i.strip() for i in datalist]
-    for i, line in enumerate(datalist):
-        if 'img' in line:
-            datalist[i] = '\n'+image_root+line+'.jpg'
-            datalist[i+1] = ''
-        else:
-            datalist[i] = ' '+line
-    with open('data/test.list', 'w') as f:
-        f.write(''.join(datalist))
-
-
-def rotate_img(img, true_box):
-    # 旋转图像,那么坐标轴也要交换
-    """ w h an x y """
-
-    true_box[:, [3, 4]] = true_box[:, [4, 3]]
-    true_box[:, [0, 1]] = true_box[:, [1, 0]]
-    return skimage.transform.rotate(img, -90., resize=True)
+from imgaug import augmenters as iaa
+import imgaug as ia
 
 
 class helper(object):
@@ -56,6 +18,18 @@ class helper(object):
         self.grid_w = 1/self.out_w
         self.grid_h = 1/self.out_h
         self.xy_offset = self._coordinate_offset()
+        self.iaaseq = iaa.Sequential([
+            iaa.Fliplr(0.5),  # 50% 镜像
+            iaa.Crop(percent=(0, 0.1)),  # random crops
+            # Strengthen or weaken the contrast in each image.
+            iaa.ContrastNormalization((0.5, 1.5)),
+            # which can end up changing the color of the images.
+            iaa.Multiply((0.8, 1.2), per_channel=0.2),
+            # Apply affine transformations to each image.
+            # Scale/zoom them, translate/move them, rotate them and shear them.
+            iaa.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+                       rotate=(-10, 10))
+        ])
 
     def _xy_to_grid(self, box: np.ndarray)->tuple:
         if box[0] == 1.0:
@@ -99,9 +73,24 @@ class helper(object):
         true_box = label[np.where(label[:, :, 4] > .7)]
         return true_box.astype('float32')
 
-    def generator(self, is_resize=True, is_make_lable=True):
+    def data_augmenter(self, img, true_box):
+        seq_det = self.iaaseq.to_deterministic()
+        img = img.astype('uint8')
+
+        bbs = ia.BoundingBoxesOnImage.from_xyxy_array(self.center_to_corner(true_box), shape=(self.in_h, self.in_w))
+
+        image_aug = seq_det.augment_images([img])[0]
+        bbs_aug = seq_det.augment_bounding_boxes([bbs])[0]
+        bbs_aug = bbs_aug.remove_out_of_image().clip_out_of_image()
+
+        xyxy_box = bbs_aug.to_xyxy_array()
+        new_box = self.corner_to_center(xyxy_box)
+        return image_aug, new_box
+
+    def generator(self, is_training=True, is_resize=True, is_make_lable=True):
         with open(self.list_name, 'r') as f:
             datalist = f.readlines()
+        self.total_data = len(datalist)
         while True:
             for line in datalist:
                 if line.strip() == '':
@@ -112,20 +101,16 @@ class helper(object):
                 if len(img.shape) != 3:
                     img = skimage.color.gray2rgb(img)
                 true_box = []
-                for i in range(1, len(one_ann), 6):
-                    true_box.append(one_ann[i:i+6])
-                true_box = np.asfarray(true_box, dtype='float32')
-                # NOTE convert the [h w] to [w h]
-                true_box[:, [0, 1]] = true_box[:, [1, 0]]
-                # NOTE convert [w,h,ang,x,y,1] to [x,y,w,h,1]
-                true_box = true_box[:, [3, 4, 0, 1, 5]]
-                # convert xy wh to [0-1]
-                true_box[:, 0:2] /= img.shape[0:2][::-1]
-                true_box[:, 2:4] /= img.shape[0:2][::-1]
+                for i in range(1, len(one_ann), 5):
+                    true_box.append(one_ann[i:i+5])
+                true_box = np.asfarray(true_box)
+                # todo data augment
                 if is_resize:
-                    img = skimage.transform.resize(img, (self.in_h, self.in_w), mode='reflect')
-                # normalize image to [0-1]
-                img = skimage.exposure.equalize_hist(img)
+                    img = skimage.transform.resize(img, (self.in_h, self.in_w), mode='reflect', preserve_range=True)
+
+                if is_training:
+                    img, true_box = self.data_augmenter(img, true_box)
+
                 if is_make_lable:
                     yield img, self.box_to_label(img, true_box)
                 else:
@@ -138,6 +123,7 @@ class helper(object):
         dataset = dataset.prefetch(batch_size)
         dataset = dataset.apply(tf.data.experimental.shuffle_and_repeat(batch_size*2, count=None, seed=rand_seed))
         self.dataset = dataset
+        self.epoch_step = self.total_data//batch_size
 
     def get_iter(self):
         return self.dataset.make_one_shot_iterator().get_next()
@@ -150,3 +136,19 @@ class helper(object):
                           color=(0, 200, 0))
         skimage.io.imshow(img)
         skimage.io.show()
+
+    def center_to_corner(self, true_box):
+        x1 = (true_box[:, 0:1]-true_box[:, 2:3])*self.in_w
+        y1 = (true_box[:, 1:2]-true_box[:, 3:4])*self.in_h
+        x2 = (true_box[:, 0:1]+true_box[:, 2:3])*self.in_w
+        y2 = (true_box[:, 1:2]+true_box[:, 3:4])*self.in_h
+        xyxy_box = np.hstack([x1, y1, x2, y2])
+        return xyxy_box.astype('float32')
+
+    def corner_to_center(self, xyxy_box):
+        x = ((xyxy_box[:, 2:3]-xyxy_box[:, 0:1])/2+xyxy_box[:, 0:1])/self.in_w
+        y = ((xyxy_box[:, 3:4]-xyxy_box[:, 1:2])/2+xyxy_box[:, 1:2])/self.in_h
+        w = (xyxy_box[:, 2:3]-xyxy_box[:, 0:1])/(2*self.in_w)
+        h = (xyxy_box[:, 3:4]-xyxy_box[:, 1:2])/(2*self.in_h)
+        true_box = np.hstack([x, y, w, h])
+        return true_box.astype('float32')
