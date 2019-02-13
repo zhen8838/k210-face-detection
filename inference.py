@@ -7,8 +7,8 @@ from scipy.special import expit
 
 if __name__ == "__main__":
     g = tf.get_default_graph()
-    fddb = helper('data/test.list', (224, 320), (7, 10))
-    gen = fddb.generator()
+    fddb = helper('data/train.list', (224, 320), (7, 10))
+    gen = fddb.generator(is_training=False)
 
     with tf.gfile.GFile('Training_save.pb', 'rb') as f:
         graph_def = tf.GraphDef()

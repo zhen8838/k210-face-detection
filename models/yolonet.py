@@ -90,3 +90,48 @@ def yoloconv(images: tf.Tensor, depth_multiplier: float, is_training: bool):
                 endpoints[flower_point[4]] = nets
                 # nets = (?, 7, 10, 125)
     return nets, endpoints
+
+
+def pureconv(images: tf.Tensor, depth_multiplier: float, is_training: bool):
+    """ this network input should be 240*320 """
+    with tf.variable_scope('Yolo'):
+        with tf.variable_scope('convd_1'):
+            nets = tf.layers.conv2d(images, 32, (3, 3), padding='same')
+            nets = tf.layers.batch_normalization(nets, training=is_training)
+            nets = tf.nn.leaky_relu(nets)
+            nets = tf.layers.max_pooling2d(nets, pool_size=(2, 2), strides=(2, 2))
+            # nets=[120,160,8]
+        with tf.variable_scope('convd_2'):
+            nets = tf.layers.conv2d(nets, 32, (3, 3), padding='same')
+            nets = tf.layers.batch_normalization(nets, training=is_training)
+            nets = tf.nn.leaky_relu(nets)
+            nets = tf.layers.max_pooling2d(nets, pool_size=(2, 2), strides=(2, 2))
+            # nets=[60,80,16]
+        with tf.variable_scope('convd_3'):
+            nets = tf.layers.conv2d(nets, 64, (3, 3), padding='same')
+            nets = tf.layers.batch_normalization(nets, training=is_training)
+            nets = tf.nn.leaky_relu(nets)
+            nets = tf.layers.max_pooling2d(nets, pool_size=(2, 2), strides=(2, 2))
+            # nets=[30,40,32]
+        with tf.variable_scope('convd_4'):
+            nets = tf.layers.conv2d(nets, 64, (3, 3), padding='same')
+            nets = tf.layers.batch_normalization(nets, training=is_training)
+            nets = tf.nn.leaky_relu(nets)
+            nets = tf.layers.max_pooling2d(nets, pool_size=(2, 2), strides=(2, 2))
+            # nets=[15,20,64]
+        with tf.variable_scope('convd_5'):
+            nets = tf.layers.conv2d(nets, 64, (3, 3), padding='same')
+            nets = tf.layers.batch_normalization(nets, training=is_training)
+            nets = tf.nn.leaky_relu(nets)
+            nets = tf.layers.max_pooling2d(nets, pool_size=(2, 2), strides=(2, 2))
+            # nets=[7,10,64]
+        with tf.variable_scope('convd_6'):
+            nets = tf.layers.conv2d(nets, 32, (3, 3), padding='same')
+            nets = tf.layers.batch_normalization(nets, training=is_training)
+            nets = tf.nn.leaky_relu(nets)
+            # nets=[7,10,64]
+        with tf.variable_scope('Final'):
+            nets = tf.layers.conv2d(nets, 5, (3, 3), padding='same')
+            # nets=[7,10,5]
+    endpoints = None
+    return nets, endpoints

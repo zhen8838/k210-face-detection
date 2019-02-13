@@ -1,11 +1,19 @@
-CKPT:=none
-INNODE:=input
-OUTNODE:=predict
+CKPT:=""
+INNODE:=Input_image
+OUTNODE:=Yolo/Final/conv2d/BiasAdd
 TFLITE:=mobilenet_v1_0.5_224_320_frozen.tflite
 PB:=Freeze_save.pb.pb
+H=240
+W=320
+IAA=False
+ILR=0.0005
+MAXEP=10
 
-train:
-	python3 train.py --pre_ckpt log/20190207-213702
+train_pureconv:
+	python3 train.py --pre_ckpt ${CKPT} --image_size 240 320  --model_def pureconv --augmenter ${IAA} --init_learning_rate ${ILR} --max_nrof_epochs ${MAXEP}
+	
+train_yoloconv:
+	python3 train.py --image_size 224 320 --model_def yoloconv --augmenter True
 
 freeze:
 	python3 freeze_graph.py \
@@ -35,7 +43,7 @@ kmodel_convert:
 	cd ~/Documents/kendryte-model-compiler/ && \
 	python3 __main__.py --dataset_input_name ${INNODE}:0 \
                     --dataset_loader "dataset_loader/img_neg1_1.py" \
-                    --image_h 224 --image_w 320 \
+                    --image_h 240 --image_w 320 \
                     --dataset_pic_path "dataset/flowers" \
                     --model_loader "model_loader/pb" \
                     --pb_path "pb_files/${PB}" \

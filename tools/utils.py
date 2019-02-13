@@ -30,6 +30,9 @@ class helper(object):
             iaa.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
                        rotate=(-10, 10))
         ])
+        with open(self.list_name, 'r') as f:
+            self.datalist = f.readlines()
+        self.total_data = len(self.datalist)
 
     def _xy_to_grid(self, box: np.ndarray)->tuple:
         if box[0] == 1.0:
@@ -45,7 +48,7 @@ class helper(object):
             mody /= self.grid_h
         return int(idx), modx, int(idy), mody
 
-    def box_to_label(self, img, true_box):
+    def box_to_label(self, true_box):
         label = np.zeros((self.out_h, self.out_w, 5))
         for box in true_box:
             idx, modx, idy, mody = self._xy_to_grid(box)
@@ -87,41 +90,76 @@ class helper(object):
         new_box = self.corner_to_center(xyxy_box)
         return image_aug, new_box
 
+    def _read_box(self, one_ann):
+        true_box = []
+        for i in range(1, len(one_ann), 5):
+            true_box.append(one_ann[i:i+5])
+        true_box = np.asfarray(true_box)
+        return true_box[:, 0:4]
+
+    def _read_img(self, img_path, is_resize: bool):
+        img = skimage.io.imread(img_path)
+        if len(img.shape) != 3:
+            img = skimage.color.gray2rgb(img)
+        if is_resize:
+            img = skimage.transform.resize(img, (self.in_h, self.in_w), mode='reflect', preserve_range=True)
+        return img
+
+    def _process_img(self, img, true_box, is_training: bool):
+        if is_training:
+            img, true_box = self.data_augmenter(img, true_box)
+
+        # normlize image
+        img = img/np.max(img)
+        return img, true_box
+
     def generator(self, is_training=True, is_resize=True, is_make_lable=True):
-        with open(self.list_name, 'r') as f:
-            datalist = f.readlines()
-        self.total_data = len(datalist)
         while True:
-            for line in datalist:
+            for line in self.datalist:
                 if line.strip() == '':
                     continue
                 one_ann = line.strip().split()
                 img_path = one_ann[0]
-                img = skimage.io.imread(img_path)
-                if len(img.shape) != 3:
-                    img = skimage.color.gray2rgb(img)
-                true_box = []
-                for i in range(1, len(one_ann), 5):
-                    true_box.append(one_ann[i:i+5])
-                true_box = np.asfarray(true_box)
-                # todo data augment
-                if is_resize:
-                    img = skimage.transform.resize(img, (self.in_h, self.in_w), mode='reflect', preserve_range=True)
 
-                if is_training:
-                    img, true_box = self.data_augmenter(img, true_box)
+                true_box = self._read_box(one_ann)
+                img = self._read_img(img_path, is_resize)
+                img, true_box = self._process_img(img, true_box, is_training)
 
                 if is_make_lable:
-                    yield img, self.box_to_label(img, true_box)
+                    yield img, self.box_to_label(true_box)
                 else:
                     yield img, true_box
 
-    def set_dataset(self, batch_size, rand_seed):
-        dataset = tf.data.Dataset.from_generator(self.generator, (tf.float32, tf.float32),
-                                                 (tf.TensorShape([self.in_h, self.in_w, 3]), tf.TensorShape([self.out_h, self.out_w, 5])))
-        dataset = dataset.batch(batch_size, True)
-        dataset = dataset.prefetch(batch_size)
+    def _dataset_generator(self):
+        """ only generator the image path and true box """
+        while True:
+            for line in self.datalist:
+                if line.strip() == '':
+                    continue
+                one_ann = line.strip().split()
+                img_path = one_ann[0]
+                true_box = self._read_box(one_ann)
+                yield img_path, true_box
+
+    def _dataset_parser(self, img_path, true_box, is_training: bool, is_resize: bool):
+        img = self._read_img(img_path.decode(), is_resize)
+        img, true_box = self._process_img(img, true_box, is_training)
+        label = self.box_to_label(true_box)
+        return img.astype('float32'), label.astype('float32')
+
+    def set_dataset(self, batch_size, rand_seed, is_training=True, is_resize=True):
+        def parser(img_path, true_box): return self._dataset_parser(img_path, true_box, is_training, is_resize)
+
+        dataset = tf.data.Dataset.from_generator(self._dataset_generator, (tf.string, tf.float32),
+                                                 (tf.TensorShape([]), tf.TensorShape([None, 4])))
+
+        dataset = dataset.apply(tf.data.experimental.map_and_batch(
+            map_func=lambda img_path, true_box: tuple(tf.py_func(parser, [img_path, true_box], [tf.float32, tf.float32])),
+            batch_size=batch_size,
+            drop_remainder=True
+        ))
         dataset = dataset.apply(tf.data.experimental.shuffle_and_repeat(batch_size*2, count=None, seed=rand_seed))
+
         self.dataset = dataset
         self.epoch_step = self.total_data//batch_size
 
