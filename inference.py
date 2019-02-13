@@ -7,8 +7,9 @@ from scipy.special import expit
 
 if __name__ == "__main__":
     g = tf.get_default_graph()
-    fddb = helper('data/train.list', (224, 320), (7, 10))
-    gen = fddb.generator(is_training=False)
+    fddb = helper('data/train.list', (240, 320), (7, 10))
+    test_img = fddb._read_img('data/2.jpeg', True)
+    test_img = fddb._process_img(test_img, None, is_training=False)[0]
 
     with tf.gfile.GFile('Training_save.pb', 'rb') as f:
         graph_def = tf.GraphDef()
@@ -19,7 +20,6 @@ if __name__ == "__main__":
     pred_label = g.get_tensor_by_name('predict:0')
 
     with tf.Session() as sess:
-        test_img, label = next(gen)
         test_img = test_img[np.newaxis, :, :, :]
         pred_label_ = sess.run(pred_label, feed_dict={inputs: test_img})
 
