@@ -51,6 +51,9 @@ class helper(object):
     def box_to_label(self, true_box):
         label = np.zeros((self.out_h, self.out_w, 5))
         for box in true_box:
+            # remove small box
+            if box[2] <= .1 or box[3] <= .1:
+                continue
             idx, modx, idy, mody = self._xy_to_grid(box)
             label[idy, idx, 0] = modx  # x
             label[idy, idx, 1] = mody  # y
@@ -176,17 +179,17 @@ class helper(object):
         skimage.io.show()
 
     def center_to_corner(self, true_box):
-        x1 = (true_box[:, 0:1]-true_box[:, 2:3])*self.in_w
-        y1 = (true_box[:, 1:2]-true_box[:, 3:4])*self.in_h
-        x2 = (true_box[:, 0:1]+true_box[:, 2:3])*self.in_w
-        y2 = (true_box[:, 1:2]+true_box[:, 3:4])*self.in_h
+        x1 = (true_box[:, 0:1]-true_box[:, 2:3]/2)*self.in_w
+        y1 = (true_box[:, 1:2]-true_box[:, 3:4]/2)*self.in_h
+        x2 = (true_box[:, 0:1]+true_box[:, 2:3]/2)*self.in_w
+        y2 = (true_box[:, 1:2]+true_box[:, 3:4]/2)*self.in_h
         xyxy_box = np.hstack([x1, y1, x2, y2])
         return xyxy_box.astype('float32')
 
     def corner_to_center(self, xyxy_box):
         x = ((xyxy_box[:, 2:3]-xyxy_box[:, 0:1])/2+xyxy_box[:, 0:1])/self.in_w
         y = ((xyxy_box[:, 3:4]-xyxy_box[:, 1:2])/2+xyxy_box[:, 1:2])/self.in_h
-        w = (xyxy_box[:, 2:3]-xyxy_box[:, 0:1])/(2*self.in_w)
-        h = (xyxy_box[:, 3:4]-xyxy_box[:, 1:2])/(2*self.in_h)
+        w = (xyxy_box[:, 2:3]-xyxy_box[:, 0:1])/self.in_w
+        h = (xyxy_box[:, 3:4]-xyxy_box[:, 1:2])/self.in_h
         true_box = np.hstack([x, y, w, h])
         return true_box.astype('float32')

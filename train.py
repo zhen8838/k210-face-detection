@@ -123,7 +123,7 @@ def main(train_list,
         except KeyboardInterrupt as e:
             saver.save(sess, save_path=os.path.join(subdir, 'model.ckpt'), global_step=global_steps)
             """ save as pb """
-            constant_graph = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, ['predict'])
+            constant_graph = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, ['Yolo/Final/conv2d/BiasAdd'])
             with tf.gfile.GFile(pb_name, 'wb') as f:
                 f.write(constant_graph.SerializeToString())
             print('save over')

@@ -2,12 +2,13 @@ CKPT:=""
 INNODE:=Input_image
 OUTNODE:=Yolo/Final/conv2d/BiasAdd
 TFLITE:=mobilenet_v1_0.5_224_320_frozen.tflite
-PB:=Freeze_save.pb.pb
+PB:=Freeze_save.pb
 H=240
 W=320
 IAA=False
 ILR=0.0005
 MAXEP=10
+MODEL=pureconv
 
 train_pureconv:
 	python3 train.py --pre_ckpt ${CKPT} --image_size 240 320  --model_def pureconv --augmenter ${IAA} --init_learning_rate ${ILR} --max_nrof_epochs ${MAXEP}
@@ -17,6 +18,8 @@ train_yoloconv:
 
 freeze:
 	python3 freeze_graph.py \
+			 ${MODEL} \
+			 ${H} ${W} \
 			 ${CKPT} \
 			 ${PB} \
 			 ${OUTNODE}  
@@ -35,16 +38,17 @@ nncase_convert:
 	/home/zqh/Documents/nncase/src/NnCase.Cli/bin/Debug/netcoreapp3.0/ncc \
 					-i tflite -o k210code \
 					--dataset dataset/flowers \
-					--postprocess n1to1 \
+					--postprocess 0to1 \
 					tflites/${TFLITE} build/model.c
 
 kmodel_convert:
 	cp -f ${PB} ~/Documents/kendryte-model-compiler/pb_files/ && \
 	cd ~/Documents/kendryte-model-compiler/ && \
 	python3 __main__.py --dataset_input_name ${INNODE}:0 \
-                    --dataset_loader "dataset_loader/img_neg1_1.py" \
+                    --dataset_loader "dataset_loader/img_0_1.py" \
                     --image_h 240 --image_w 320 \
                     --dataset_pic_path "dataset/flowers" \
                     --model_loader "model_loader/pb" \
                     --pb_path "pb_files/${PB}" \
-                    --tensor_output_name ${OUTNODE}
+                    --tensor_output_name ${OUTNODE} \
+					--eight_bit_mode True

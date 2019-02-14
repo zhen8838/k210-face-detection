@@ -2,15 +2,16 @@ import tensorflow as tf
 from tensorflow.python.framework import graph_util
 import sys
 import argparse
-from models.yolonet import yoloconv
+from models.yolonet import yoloconv, pureconv, yolonet
 
 
-def freeze(input_checkpoint: str, output_graph: str, output_node: str):
+def freeze(model_def, image_size, input_checkpoint: str, output_graph: str, output_node: str):
     g = tf.get_default_graph()
+    network = eval(model_def)
+
     ckpt = tf.train.get_checkpoint_state(input_checkpoint)
-    inputs = tf.placeholder(dtype=tf.float32, shape=(1, 224, 320, 3), name='Input_image')
-    output, _ = yoloconv(inputs, 0.5, is_training=False)
-    pred_label = tf.identity(output, name='predict')
+    inputs = tf.placeholder(dtype=tf.float32, shape=(1, image_size[0], image_size[1], 3), name='Input_image')
+    output, _ = network(inputs, 0.5, is_training=False)
     with tf.Session() as sess:
         loader = tf.train.Saver()
         loader.restore(sess, ckpt.model_checkpoint_path)
@@ -26,12 +27,20 @@ def freeze(input_checkpoint: str, output_graph: str, output_node: str):
         print(inputs)
         print(output)
 
+
 def main(args):
-    freeze(args.ckpt_path, args.pb_path, args.output_node)
+    freeze(args.model_def, args.image_size, args.ckpt_path, args.pb_path, args.output_node)
 
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('model_def', type=str,
+                        help='Model definition.',
+                        choices=['yoloseparabe', 'yoloconv', 'pureconv'])
+
+    parser.add_argument('image_size', type=int,
+                        help='net work input image size', nargs='+')
 
     parser.add_argument('ckpt_path', type=str,
                         help='Path to the ckpt directory.')
