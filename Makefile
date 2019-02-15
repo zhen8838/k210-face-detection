@@ -34,8 +34,8 @@ freeze:
 inference:
 	python3 inference.py \
 			--pb_path ${PB} \
-			--image_size ${H} ${W}	 
-
+			--image_size ${H} ${W} \
+			--image_path data/2.jpg
 tflite:
 	toco --graph_def_file=${PB} \
 			--output_file=${TFLITE} \

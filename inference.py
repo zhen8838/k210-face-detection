@@ -8,10 +8,10 @@ import sys
 import argparse
 
 
-def main(pb_path, image_size):
+def main(pb_path, image_size,image_path):
     g = tf.get_default_graph()
     fddb = helper('data/train.list', image_size, (7, 10))
-    test_img = fddb._read_img('data/2.jpg', True)
+    test_img = fddb._read_img(image_path, True)
     test_img = fddb._process_img(test_img, None, is_training=False)[0]
 
     with tf.gfile.GFile(pb_path, 'rb') as f:
@@ -36,9 +36,10 @@ def parse_arguments(argv):
 
     parser.add_argument('--pb_path', type=str, help='pb file path', default='Freeze_save.pb')
     parser.add_argument('--image_size', type=int, help='net work input image size', default=(240, 320), nargs='+')
+    parser.add_argument('--image_path', type=str, help='the face image',default='data/2.jpg')
     return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
     args = parse_arguments(sys.argv[1:])
-    main(args.pb_path, args.image_size)
+    main(args.pb_path, args.image_size, args.image_path)
