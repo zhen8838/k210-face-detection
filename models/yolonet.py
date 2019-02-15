@@ -68,7 +68,7 @@ def yoloconv(images: tf.Tensor, depth_multiplier: float, is_training: bool):
     # add the new layer
     with tf.variable_scope('Yolo'):
         with slim.arg_scope([slim.batch_norm], is_training=is_training,  center=True, scale=True, decay=0.9997, epsilon=0.001):
-            with slim.arg_scope([slim.conv2d, slim.separable_conv2d], padding='SAME', normalizer_fn=slim.batch_norm, activation_fn=None,):
+            with slim.arg_scope([slim.conv2d, slim.separable_conv2d], padding='SAME', normalizer_fn=slim.batch_norm, activation_fn=None):
                 # (?, 7, 10, 512)
                 nets = slim.separable_conv2d(nets, None, (3, 3), scope=flower_point[0])
                 nets = tf.nn.relu6(nets, name=flower_point[0]+'/relu6')

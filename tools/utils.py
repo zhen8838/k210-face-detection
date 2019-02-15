@@ -20,6 +20,7 @@ class helper(object):
         self.xy_offset = self._coordinate_offset()
         self.iaaseq = iaa.Sequential([
             iaa.Fliplr(0.5),  # 50% 镜像
+            iaa.Add((-30, 30)),
             iaa.Crop(percent=(0, 0.1)),  # random crops
             # Strengthen or weaken the contrast in each image.
             iaa.ContrastNormalization((0.5, 1.5)),
@@ -27,7 +28,8 @@ class helper(object):
             iaa.Multiply((0.8, 1.2), per_channel=0.2),
             # Apply affine transformations to each image.
             # Scale/zoom them, translate/move them, rotate them and shear them.
-            iaa.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+            iaa.Affine(scale={"x": (0.8, 1.4), "y": (0.8, 1.4)},
+                       translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
                        rotate=(-10, 10))
         ])
         with open(self.list_name, 'r') as f:

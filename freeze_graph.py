@@ -12,8 +12,12 @@ def freeze(model_def, image_size, input_checkpoint: str, output_graph: str, outp
     ckpt = tf.train.get_checkpoint_state(input_checkpoint)
     inputs = tf.placeholder(dtype=tf.float32, shape=(1, image_size[0], image_size[1], 3), name='Input_image')
     output, _ = network(inputs, 0.5, is_training=False)
+
+    var_list = tf.global_variables()  # +[g for g in tf.global_variables() if 'moving_' in g.name]
+    loader = tf.train.Saver(var_list)
+
     with tf.Session() as sess:
-        loader = tf.train.Saver()
+
         loader.restore(sess, ckpt.model_checkpoint_path)
 
         output_graph_def = graph_util.convert_variables_to_constants(  # 模型持久化，将变量值固定

@@ -21,7 +21,7 @@ def create_list(fddb_dir, ann_dir):
         f.writelines(datalist)
 
 
-def main(fddb_dir='/media/zqh/Datas/DataSet/FDDB', ann_dir='/media/zqh/Datas/DataSet/FDDB/FDDB-folds'):
+def main(fddb_dir='/home/zqh/FDDB', ann_dir='/home/zqh/FDDB/FDDB-folds'):
     create_list(fddb_dir, ann_dir)
     """ rescale the xywh """
     new_datalist = []
