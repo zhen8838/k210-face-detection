@@ -11,7 +11,7 @@ import argparse
 import importlib
 
 
-def restore_ckpt(sess: tf.Session, ckptdir: str):
+def restore_ckpt(sess: tf.Session, var_list: list, ckptdir: str):
     if ckptdir == '' or ckptdir == None:
         pass
     elif 'mobilenet' in ckptdir:
@@ -20,7 +20,7 @@ def restore_ckpt(sess: tf.Session, ckptdir: str):
         loader.restore(sess, ckptdir)
     else:
         ckpt = tf.train.get_checkpoint_state(ckptdir)
-        loader = tf.train.Saver()
+        loader = tf.train.Saver(var_list=var_list)
         loader.restore(sess, ckpt.model_checkpoint_path)
 
 
@@ -52,6 +52,7 @@ def main(train_list,
     """ define the model """
     batch_image = tf.placeholder_with_default(next_img, shape=[None, image_size[0], image_size[1], 3], name='Input_image')
     batch_label = tf.placeholder_with_default(next_label, shape=[None, output_size[0], output_size[1], 5], name='Input_label')
+    # training_control = tf.placeholder(tf.bool, shape=[], name='training_control')
     true_label = tf.identity(batch_label)
     nets, endpoints = network(batch_image, depth_multiplier, is_training=True)
 
@@ -80,19 +81,27 @@ def main(train_list,
     """ define train optimizer """
     current_learning_rate = tf.train.exponential_decay(init_learning_rate, global_steps, fddb.epoch_step // learning_rate_decay_epochs,
                                                        learning_rate_decay_factor, staircase=False)
-
-    train_op = tf.train.AdamOptimizer(learning_rate=current_learning_rate).minimize(total_loss, global_step=global_steps)
+    """ define train_op """
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        train_op = tf.train.AdamOptimizer(current_learning_rate).minimize(total_loss, global_steps)
+    # train_op = slim.learning.create_train_op(total_loss, tf.train.AdamOptimizer(current_learning_rate), global_steps)
 
     """ calc the accuracy """
-    pred_obj_num = tf.reduce_sum(tf.cast(pred_confidence_sigmoid > .7, tf.float32))
-    confidence_acc = tf.boolean_mask(tf.equal(true_confidence, tf.cast(pred_confidence_sigmoid > .7, tf.float32)), obj_mask)
-    confidence_acc = tf.reduce_mean(tf.cast(confidence_acc, tf.float32))
+    # pred_obj_num = tf.reduce_sum(tf.cast(pred_confidence_sigmoid > .7, tf.float32))
+    # confidence_acc = tf.boolean_mask(tf.equal(true_confidence, tf.cast(pred_confidence_sigmoid > .7, tf.float32)), obj_mask)
+    # confidence_acc = tf.reduce_mean(tf.cast(confidence_acc, tf.float32))
+    confidence_acc, acc_op = tf.metrics.accuracy(tf.boolean_mask(true_confidence, obj_mask), tf.boolean_mask(tf.cast(pred_confidence_sigmoid > .7, tf.float32), obj_mask))
+    test_confidence_acc, test_acc_op = tf.metrics.accuracy(tf.boolean_mask(true_confidence, obj_mask), tf.boolean_mask(tf.cast(pred_confidence_sigmoid > .7, tf.float32), obj_mask))
     with tf.Session() as sess:
-        saver = tf.train.Saver()
+        """ must save the bn paramter! """
+        var_list = tf.global_variables()  # list(set(tf.trainable_variables() + [g for g in tf.global_variables() if 'moving_' in g.name]))
+        saver = tf.train.Saver(var_list)
+
         # init the model and restore the pre-train weight
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())  # NOTE the accuracy must init local variable
-        restore_ckpt(sess, pre_ckpt)
+        restore_ckpt(sess, var_list, pre_ckpt)
         # define the log and saver
         subdir = os.path.join(log_dir, datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S'))
         writer = tf.summary.FileWriter(subdir, graph=sess.graph)
@@ -101,7 +110,7 @@ def main(train_list,
         tf.summary.scalar('obj_loss', obj_loss)
         tf.summary.scalar('noobj_loss', noobj_loss)
         tf.summary.scalar('mse_loss', mse_loss)
-        tf.summary.scalar('pred_obj_num', pred_obj_num)
+        # tf.summary.scalar('pred_obj_num', pred_obj_num)
         tf.summary.scalar('leraning rate', current_learning_rate)
         merged = tf.summary.merge_all()
 
@@ -109,10 +118,10 @@ def main(train_list,
             for i in range(max_nrof_epochs):
                 with tqdm(total=fddb.epoch_step, bar_format='{n_fmt}/{total_fmt} |{bar}| {rate_fmt}{postfix}]', unit=' batch', dynamic_ncols=True) as t:
                     for j in range(fddb.epoch_step):
-                        summary, _, total_l, con_acc,  lr, step_cnt, p_c = sess.run(
-                            [merged, train_op, total_loss, confidence_acc, current_learning_rate, global_steps, pred_confidence_sigmoid])
+                        summary, _, total_l, con_acc, _,  lr, step_cnt, p_c = sess.run(
+                            [merged, train_op, total_loss, confidence_acc, acc_op, current_learning_rate, global_steps, pred_confidence_sigmoid])
                         writer.add_summary(summary, step_cnt)
-                        t.set_postfix(loss='{:<5.3f}'.format(total_l), con_acc='{:<4.2f}%'.format(con_acc*100), lr='{:7f}'.format(lr))
+                        t.set_postfix(loss='{:<5.3f}'.format(total_l), acc='{:<4.2f}%'.format(con_acc*100), lr='{:f}'.format(lr))
                         t.update()
             saver.save(sess, save_path=os.path.join(subdir, 'model.ckpt'), global_step=global_steps)
             """ save as pb """
