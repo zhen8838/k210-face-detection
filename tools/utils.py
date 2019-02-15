@@ -54,8 +54,8 @@ class helper(object):
         label = np.zeros((self.out_h, self.out_w, 5))
         for box in true_box:
             # remove small box
-            if box[2] <= .1 or box[3] <= .1:
-                continue
+            # if box[2] <= .1 or box[3] <= .1:
+            #     continue
             idx, modx, idy, mody = self._xy_to_grid(box)
             label[idy, idx, 0] = modx  # x
             label[idy, idx, 1] = mody  # y

@@ -52,9 +52,9 @@ def main(train_list,
     """ define the model """
     batch_image = tf.placeholder_with_default(next_img, shape=[None, image_size[0], image_size[1], 3], name='Input_image')
     batch_label = tf.placeholder_with_default(next_label, shape=[None, output_size[0], output_size[1], 5], name='Input_label')
-    # training_control = tf.placeholder(tf.bool, shape=[], name='training_control')
+    training_control = tf.placeholder_with_default(True, shape=[], name='training_control')
     true_label = tf.identity(batch_label)
-    nets, endpoints = network(batch_image, depth_multiplier, is_training=True)
+    nets, endpoints = network(batch_image, depth_multiplier, is_training=training_control)
 
     """ reshape the model output """
     pred_label = tf.identity(nets, name='predict')
@@ -112,16 +112,22 @@ def main(train_list,
         tf.summary.scalar('mse_loss', mse_loss)
         # tf.summary.scalar('pred_obj_num', pred_obj_num)
         tf.summary.scalar('leraning rate', current_learning_rate)
+        tf.summary.scalar('test acc', test_confidence_acc)
+        tf.summary.scalar('train acc', confidence_acc)
         merged = tf.summary.merge_all()
 
         try:
             for i in range(max_nrof_epochs):
                 with tqdm(total=fddb.epoch_step, bar_format='{n_fmt}/{total_fmt} |{bar}| {rate_fmt}{postfix}]', unit=' batch', dynamic_ncols=True) as t:
                     for j in range(fddb.epoch_step):
-                        summary, _, total_l, con_acc, _,  lr, step_cnt, p_c = sess.run(
-                            [merged, train_op, total_loss, confidence_acc, acc_op, current_learning_rate, global_steps, pred_confidence_sigmoid])
+                        if j % 40 == 0:
+                            summary, test_con_acc, _, step_cnt = sess.run(
+                                [merged,  test_confidence_acc, test_acc_op, global_steps], feed_dict={training_control: False})
+                        else:
+                            summary, _, total_l, con_acc, _,  lr, step_cnt = sess.run(
+                                [merged, train_op, total_loss, confidence_acc, acc_op, current_learning_rate, global_steps])
+                            t.set_postfix(loss='{:<5.3f}'.format(total_l), acc='{:<4.2f}%'.format(con_acc*100), lr='{:f}'.format(lr))
                         writer.add_summary(summary, step_cnt)
-                        t.set_postfix(loss='{:<5.3f}'.format(total_l), acc='{:<4.2f}%'.format(con_acc*100), lr='{:f}'.format(lr))
                         t.update()
             saver.save(sess, save_path=os.path.join(subdir, 'model.ckpt'), global_step=global_steps)
             """ save as pb """

@@ -11,7 +11,7 @@ import argparse
 def main(pb_path, image_size):
     g = tf.get_default_graph()
     fddb = helper('data/train.list', image_size, (7, 10))
-    test_img = fddb._read_img('data/2.jpeg', True)
+    test_img = fddb._read_img('data/2.jpg', True)
     test_img = fddb._process_img(test_img, None, is_training=False)[0]
 
     with tf.gfile.GFile(pb_path, 'rb') as f:
