@@ -82,3 +82,12 @@ I implement face detection based on the idea of ​​yolo network in Kendryte K
 # Final effect
 
 ![We play together at the skating rink](data/1.jpg)   
+
+# todo 
+
+- [] add nms to avoid box overlapping
+
+# Reference
+
+[kendryte github](https://github.com/kendryte)
+[YAD2k](https://github.com/allanzelener/YAD2K)
