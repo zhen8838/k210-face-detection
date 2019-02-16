@@ -45,7 +45,7 @@ def main(train_list,
     network = eval(model_def)
 
     """ generate the dataset """
-    fddb = helper(train_list, image_size, output_size)
+    fddb = helper(train_list, image_size, output_size, 1/2)
     fddb.set_dataset(batch_size, rand_seed, is_training=is_augmenter)
     next_img, next_label = fddb.get_iter()
 
@@ -118,7 +118,7 @@ def main(train_list,
 
         try:
             for i in range(max_nrof_epochs):
-                with tqdm(total=fddb.epoch_step, bar_format='{n_fmt}/{total_fmt} |{bar}| {rate_fmt}{postfix}]', unit=' batch', dynamic_ncols=True) as t:
+                with tqdm(total=fddb.epoch_step, bar_format='{n_fmt}/{total_fmt} |{bar}| {rate_fmt}{postfix}', unit=' batch', dynamic_ncols=True) as t:
                     for j in range(fddb.epoch_step):
                         if j % 40 == 0:
                             summary, test_con_acc, _, step_cnt = sess.run(

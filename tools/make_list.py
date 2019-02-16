@@ -44,6 +44,7 @@ def main(fddb_dir='/home/zqh/FDDB', ann_dir='/home/zqh/FDDB/FDDB-folds'):
             # convert xy wh to [0-1]
             true_box[:, 0:2] /= img.shape[0:2][::-1]
             true_box[:, 2:4] /= img.shape[0:2][::-1]
+            # true_box[:, 2:4] *= 2 # NOTE the fddb annotation is radius
             true_box = true_box.astype('float32')
             f.write(img_path+' ')
             for box in true_box:

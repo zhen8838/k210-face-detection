@@ -9,7 +9,7 @@ import imgaug as ia
 
 
 class helper(object):
-    def __init__(self, list_name, in_hw: tuple, out_hw: tuple):
+    def __init__(self, list_name, in_hw: tuple, out_hw: tuple, box_multiplier=1):
         self.in_h = in_hw[0]
         self.in_w = in_hw[1]
         self.out_h = out_hw[0]
@@ -18,6 +18,7 @@ class helper(object):
         self.grid_w = 1/self.out_w
         self.grid_h = 1/self.out_h
         self.xy_offset = self._coordinate_offset()
+        # self.box_multiplier = box_multiplier
         self.iaaseq = iaa.Sequential([
             iaa.Fliplr(0.5),  # 50% 镜像
             iaa.Add((-30, 30)),
@@ -71,7 +72,7 @@ class helper(object):
                 offset[i, j, :] = np.array([j, i])  # NOTE  [x,y]
         offset[..., 0] /= self.out_w
         offset[..., 1] /= self.out_h
-        return offset.astype('float32')
+        return offset
 
     def _xy_to_all(self, label: np.ndarray)->np.ndarray:
         label[:, :, 0:2] = label[:, :, 0:2] * np.array([self.grid_w, self.grid_h])+self.xy_offset
@@ -79,7 +80,7 @@ class helper(object):
     def label_to_box(self, label):
         self._xy_to_all(label)
         true_box = label[np.where(label[:, :, 4] > .7)]
-        return true_box.astype('float32')
+        return true_box
 
     def data_augmenter(self, img, true_box):
         seq_det = self.iaaseq.to_deterministic()
@@ -100,6 +101,7 @@ class helper(object):
         for i in range(1, len(one_ann), 5):
             true_box.append(one_ann[i:i+5])
         true_box = np.asfarray(true_box)
+        # true_box[:, 2:4] *= self.box_multiplier
         return true_box[:, 0:4]
 
     def _read_img(self, img_path, is_resize: bool):
@@ -158,12 +160,14 @@ class helper(object):
         dataset = tf.data.Dataset.from_generator(self._dataset_generator, (tf.string, tf.float32),
                                                  (tf.TensorShape([]), tf.TensorShape([None, 4])))
 
+        # dataset = dataset.apply(tf.data.experimental.shuffle_and_repeat(batch_size*2, count=None, seed=rand_seed))
+        dataset = dataset.shuffle(batch_size*5, seed=rand_seed)
+
         dataset = dataset.apply(tf.data.experimental.map_and_batch(
             map_func=lambda img_path, true_box: tuple(tf.py_func(parser, [img_path, true_box], [tf.float32, tf.float32])),
-            batch_size=batch_size,
-            drop_remainder=True
-        ))
-        dataset = dataset.apply(tf.data.experimental.shuffle_and_repeat(batch_size*2, count=None, seed=rand_seed))
+            batch_size=batch_size,drop_remainder=True))
+
+        dataset = dataset.prefetch(3)
 
         self.dataset = dataset
         self.epoch_step = self.total_data//batch_size
@@ -173,9 +177,10 @@ class helper(object):
 
     def draw_box(self, img, true_box):
         """ [x,y,w,h,1] """
+        # true_box[:, 2:4] /= self.box_multiplier
         for box in true_box:
-            cv2.rectangle(img, tuple(((box[0:2]-box[2:4])*img.shape[0:2][::-1]).astype('int')),
-                          tuple(((box[0:2] + box[2:4])*img.shape[0:2][::-1]).astype('int')),
+            cv2.rectangle(img, tuple(((box[0:2]-box[2:4]/2)*img.shape[0:2][::-1]).astype('int')),
+                          tuple(((box[0:2] + box[2:4]/2)*img.shape[0:2][::-1]).astype('int')),
                           color=(0, 200, 0))
         skimage.io.imshow(img)
         skimage.io.show()
@@ -186,7 +191,7 @@ class helper(object):
         x2 = (true_box[:, 0:1]+true_box[:, 2:3]/2)*self.in_w
         y2 = (true_box[:, 1:2]+true_box[:, 3:4]/2)*self.in_h
         xyxy_box = np.hstack([x1, y1, x2, y2])
-        return xyxy_box.astype('float32')
+        return xyxy_box
 
     def corner_to_center(self, xyxy_box):
         x = ((xyxy_box[:, 2:3]-xyxy_box[:, 0:1])/2+xyxy_box[:, 0:1])/self.in_w
@@ -194,4 +199,4 @@ class helper(object):
         w = (xyxy_box[:, 2:3]-xyxy_box[:, 0:1])/self.in_w
         h = (xyxy_box[:, 3:4]-xyxy_box[:, 1:2])/self.in_h
         true_box = np.hstack([x, y, w, h])
-        return true_box.astype('float32')
+        return true_box

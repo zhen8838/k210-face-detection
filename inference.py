@@ -8,7 +8,7 @@ import sys
 import argparse
 
 
-def main(pb_path, image_size,image_path):
+def main(pb_path, image_size, image_path):
     g = tf.get_default_graph()
     fddb = helper('data/train.list', image_size, (7, 10))
     test_img = fddb._read_img(image_path, True)
@@ -26,9 +26,12 @@ def main(pb_path, image_size,image_path):
         test_img = test_img[np.newaxis, :, :, :]
         pred_label_ = sess.run(pred_label, feed_dict={inputs: test_img})
 
-        pred_label_ = expit(pred_label_)
-        boxes = fddb.label_to_box(pred_label_[0])
+        pred_label_ = expit(pred_label_)[0]
+        boxes = fddb.label_to_box(pred_label_)
         fddb.draw_box(test_img[0], boxes)
+    pred_label_ = np.rollaxis(pred_label_, 2, 0)
+    print(boxes)
+    np.savetxt('tmp/model_out.csv', pred_label_.ravel(), fmt='%6.5f')
 
 
 def parse_arguments(argv):
@@ -36,7 +39,7 @@ def parse_arguments(argv):
 
     parser.add_argument('--pb_path', type=str, help='pb file path', default='Freeze_save.pb')
     parser.add_argument('--image_size', type=int, help='net work input image size', default=(240, 320), nargs='+')
-    parser.add_argument('--image_path', type=str, help='the face image',default='data/2.jpg')
+    parser.add_argument('--image_path', type=str, help='the face image', default='data/2.jpg')
     return parser.parse_args(argv)
 
 

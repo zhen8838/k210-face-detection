@@ -60,7 +60,7 @@ kmodel_convert:
 	python3 __main__.py --dataset_input_name Input_image:0 \
 			--dataset_loader "dataset_loader/img_0_1.py" \
 			--image_h 240 --image_w 320 \
-			--dataset_pic_path "dataset/flowers" \
+			--dataset_pic_path dataset/example_img \
 			--model_loader "model_loader/pb" \
 			--pb_path "pb_files/${PB}" \
 			--tensor_output_name Yolo/Final/conv2d/BiasAdd \
