@@ -208,7 +208,7 @@ int main(void) {
     task.callback= ai_done;
     kpu_single_task_init(&task);
 
-    detect_rl.threshold= 0.75;
+    detect_rl.threshold= 0.7;
     region_layer_init(&detect_rl, &task);
 
     while (1) {
