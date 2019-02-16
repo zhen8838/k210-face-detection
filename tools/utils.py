@@ -9,7 +9,7 @@ import imgaug as ia
 
 
 class helper(object):
-    def __init__(self, list_name, in_hw: tuple, out_hw: tuple, box_multiplier=1):
+    def __init__(self, list_name, in_hw: tuple, out_hw: tuple):
         self.in_h = in_hw[0]
         self.in_w = in_hw[1]
         self.out_h = out_hw[0]
@@ -18,7 +18,6 @@ class helper(object):
         self.grid_w = 1/self.out_w
         self.grid_h = 1/self.out_h
         self.xy_offset = self._coordinate_offset()
-        # self.box_multiplier = box_multiplier
         self.iaaseq = iaa.Sequential([
             iaa.Fliplr(0.5),  # 50% 镜像
             iaa.Add((-30, 30)),
@@ -101,7 +100,6 @@ class helper(object):
         for i in range(1, len(one_ann), 5):
             true_box.append(one_ann[i:i+5])
         true_box = np.asfarray(true_box)
-        # true_box[:, 2:4] *= self.box_multiplier
         return true_box[:, 0:4]
 
     def _read_img(self, img_path, is_resize: bool):
@@ -165,7 +163,7 @@ class helper(object):
 
         dataset = dataset.apply(tf.data.experimental.map_and_batch(
             map_func=lambda img_path, true_box: tuple(tf.py_func(parser, [img_path, true_box], [tf.float32, tf.float32])),
-            batch_size=batch_size,drop_remainder=True))
+            batch_size=batch_size, drop_remainder=True))
 
         dataset = dataset.prefetch(3)
 
@@ -177,7 +175,6 @@ class helper(object):
 
     def draw_box(self, img, true_box):
         """ [x,y,w,h,1] """
-        # true_box[:, 2:4] /= self.box_multiplier
         for box in true_box:
             cv2.rectangle(img, tuple(((box[0:2]-box[2:4]/2)*img.shape[0:2][::-1]).astype('int')),
                           tuple(((box[0:2] + box[2:4]/2)*img.shape[0:2][::-1]).astype('int')),

@@ -45,7 +45,7 @@ def main(train_list,
     network = eval(model_def)
 
     """ generate the dataset """
-    fddb = helper(train_list, image_size, output_size, 1/2)
+    fddb = helper(train_list, image_size, output_size)
     fddb.set_dataset(batch_size, rand_seed, is_training=is_augmenter)
     next_img, next_label = fddb.get_iter()
 
