@@ -21,7 +21,7 @@ def create_list(fddb_dir, ann_dir):
         f.writelines(datalist)
 
 
-def main(fddb_dir='/home/zqh/FDDB', ann_dir='/home/zqh/FDDB/FDDB-folds'):
+def main(fddb_dir, ann_dir):
     create_list(fddb_dir, ann_dir)
     """ rescale the xywh """
     new_datalist = []
@@ -63,4 +63,4 @@ def parse_arguments(argv):
 
 if __name__ == "__main__":
     args = parse_arguments(sys.argv[1:])
-    main(args)
+    main(args.fddb_dir,args.ann_dir)
