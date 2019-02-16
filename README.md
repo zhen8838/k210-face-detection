@@ -31,6 +31,7 @@ you should install python package:
     python3 tools/make_list.py --fddb_dir FDDB --ann_dir FDDB/FDDB-folds
     ```
     now your data fold have train.list
+    
     **NOTE:**  When generate the train.list I set the box width and height only half. if you want use the normal value to train, please remove the comment in tools/make_list.py line `47`
     
 2. train 
