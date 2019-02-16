@@ -31,7 +31,7 @@ def main(pb_path, image_size, image_path):
         fddb.draw_box(test_img[0], boxes)
     pred_label_ = np.rollaxis(pred_label_, 2, 0)
     print(boxes)
-    np.savetxt('tmp/model_out.csv', pred_label_.ravel(), fmt='%6.5f')
+    # np.savetxt('tmp/model_out.csv', pred_label_.ravel(), fmt='%6.5f')
 
 
 def parse_arguments(argv):
