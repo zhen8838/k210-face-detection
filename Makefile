@@ -7,7 +7,7 @@ IAA=False
 ILR=0.0005
 MAXEP=10
 MODEL=pureconv
-
+MODELCMP=~/Documents/kendryte-model-compiler
 train_pureconv:
 	python3 train.py \
 			--pre_ckpt ${CKPT} \
@@ -55,8 +55,8 @@ nncase_convert:
 			tflites/${TFLITE} build/model.c
 
 kmodel_convert:
-	cp -f ${PB} ~/Documents/kendryte-model-compiler/pb_files/ && \
-	cd ~/Documents/kendryte-model-compiler/ && \
+	cp -f ${PB} ${MODELCMP}/pb_files/ && \
+	cd ${MODELCMP} && \
 	python3 __main__.py --dataset_input_name Input_image:0 \
 			--dataset_loader "dataset_loader/img_0_1.py" \
 			--image_h 240 --image_w 320 \
