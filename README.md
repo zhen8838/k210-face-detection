@@ -38,9 +38,10 @@ I implement face detection based on the idea of ​​yolo network in Kendryte K
     And you can use `tensorboard  --logdir log` to look the record
     
 ## test model
-    ```sh
-    make inference PB=Freeze_save.pb
-    ```
+
+ ```sh
+ make inference PB=Freeze_save.pb
+ ```
 
 
 ## export pb
