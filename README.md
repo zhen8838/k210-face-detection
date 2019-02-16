@@ -5,6 +5,18 @@ I implement face detection based on the idea of ​​yolo network in Kendryte K
 
 # Usage
 
+## environmental preparation
+
+you should install python package:
+>   tensorflow 1.12
+>   imgaug
+>   scikit-image
+>   numpy
+>   cv2
+>   matpltlib
+>   scipy
+>   tqdm
+
 ## train model
 
 1. prepare dataset and make train list
@@ -27,9 +39,13 @@ I implement face detection based on the idea of ​​yolo network in Kendryte K
     make train_pureconv ILR=0.001 MAXEP=20 IAA=false
     ```
     ILR   : the init learning rate
+    
     MAXEP : max epoch
+    
     IAA   : whether to use data augmenter
+    
     **NOTE:** you can use `CKPT:xxxxx` to continue train
+    
     example:
     ```sh
     make train_pureconv CKPT=log/20190216-152633 ILR=0.0005 MAXEP=20 IAA=true
@@ -54,10 +70,13 @@ I implement face detection based on the idea of ​​yolo network in Kendryte K
     now your fold will have `Freeze_save.pb`
 
 2.  use kendryte-model-complier to complie pb file
+    
     you can use my script (you should modify MODELCMP):
+    
     ```sh
     make kmodel_convert PB=Freeze_save.pb MODELCMP=~/Documents/kendryte-model-compiler
     ```
+    
     or refer to see the [kendryte-model-compiler](https://github.com/kendryte/kendryte-model-compiler)
 
 ##  modfiy k210 code
