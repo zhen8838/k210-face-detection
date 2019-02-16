@@ -2,7 +2,7 @@ import sys
 import os
 import skimage
 import numpy as np
-
+import argparse
 
 def create_list(fddb_dir, ann_dir):
     datafiles = [name for name in os.listdir(ann_dir) if 'ellipseList' in name]
@@ -52,5 +52,15 @@ def main(fddb_dir='/home/zqh/FDDB', ann_dir='/home/zqh/FDDB/FDDB-folds'):
             f.write('\n')
 
 
+def parse_arguments(argv):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--fddb_dir', type=str, help='fddb file dir', default='none')
+    parser.add_argument('--ann_dir', type=str, help='fddb annotation dir', default='none')
+
+    return parser.parse_args(argv)
+
+
 if __name__ == "__main__":
-    main()
+    args = parse_arguments(sys.argv[1:])
+    main(args)
