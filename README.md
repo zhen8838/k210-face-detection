@@ -12,7 +12,7 @@ you should install python package:
 >   imgaug
 >   scikit-image
 >   numpy
->   cv2
+>   opencv-python
 >   matpltlib
 >   scipy
 >   tqdm
@@ -110,4 +110,7 @@ you should install python package:
 # Reference
 
 [kendryte github](https://github.com/kendryte)
+
 [YAD2k](https://github.com/allanzelener/YAD2K)
+
+# If you have any question, please make issue~
